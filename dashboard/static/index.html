@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LAN Scanner &amp; Active Port Scanner</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #121c2e;
+    --panel-2: #17233a;
+    --border: #26344d;
+    --text: #e6edf7;
+    --muted: #93a4bf;
+    --accent: #3b82f6;
+    --accent-2: #22d3ee;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    --info: #64748b;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(1200px 600px at 15% -10%, #16243d 0%, var(--bg) 55%) no-repeat, var(--bg);
+    color: var(--text);
+    font: 15px/1.55 "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+  }
+  a { color: var(--accent-2); }
+  code { background: #0d1728; padding: 1px 5px; border-radius: 5px; font-size: 90%; }
+
+  .layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 22px; padding: 22px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+
+  header.top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; justify-content: space-between; }
+  header.top h1 { font-size: 22px; margin: 0; letter-spacing: .2px; }
+  header.top p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); }
+  .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+  aside .card + .card { margin-top: 16px; }
+  label.field { display: block; margin-bottom: 12px; }
+  label.field > span.lbl { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; }
+  input[type="text"], input[type="number"], select {
+    width: 100%; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); font: inherit; font-size: 14px;
+  }
+  input[type="text"]:focus, select:focus, input[type="number"]:focus { outline: 2px solid rgba(59,130,246,.55); outline-offset: 1px; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; min-width: 0; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .check { display: flex; gap: 9px; align-items: flex-start; margin-bottom: 10px; font-size: 13.5px; color: var(--text); }
+  .check input { margin-top: 3px; accent-color: var(--accent); }
+
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid transparent; padding: 11px 16px; font-weight: 600; }
+  .btn-primary { width: 100%; background: linear-gradient(180deg, #3b82f6, #2563eb); color: #fff; }
+  .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-ghost { background: var(--panel-2); color: var(--text); border-color: var(--border); padding: 8px 12px; font-weight: 500; font-size: 13px; }
+  .btn-ghost:hover { border-color: var(--accent); }
+  .btn-danger { background: #7f1d1d; color: #fff; }
+
+  details.notice { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); padding: 12px 14px; margin-bottom: 16px; }
+  details.notice summary { cursor: pointer; font-size: 13.5px; color: var(--muted); }
+  details.notice pre { white-space: pre-wrap; font-size: 12px; color: #cbd5e1; background: #0d1728; padding: 12px; border-radius: 9px; margin: 10px 0 0; }
+
+  .banner { grid-column: 1 / -1; border-radius: var(--radius); border: 1px solid #1e3a8a; background: #101d33; color: #cfe0ff; padding: 13px 16px; font-size: 13.5px; }
+  .banner strong { color: #fff; }
+
+  .progress-wrap { grid-column: 1 / -1; }
+  .progress-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 8px; flex-wrap: wrap; }
+  .progress-track { height: 10px; background: #0d1728; border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .25s ease; }
+  .progress-actions { display: flex; gap: 10px; margin-top: 10px; }
+
+  .kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .kpi .k { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .kpi .v { font-size: 24px; font-weight: 700; margin-top: 4px; word-break: break-word; }
+  .kpi .s { font-size: 12px; color: var(--muted); }
+
+  .tabs { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .tabs button { background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; padding: 10px 14px; font-weight: 600; font-size: 13.5px; }
+  .tabs button.active { color: #fff; border-bottom-color: var(--accent); background: var(--panel); }
+  .tab-panel { grid-column: 1 / -1; }
+  .hidden { display: none !important; }
+
+  .table-tools { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .table-tools input { max-width: 320px; }
+  .table-scroll { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); max-height: 62vh; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  thead th { position: sticky; top: 0; background: #101a2c; text-align: left; padding: 10px 12px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap; z-index: 1; }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid #1b2740; vertical-align: top; }
+  tbody tr:hover { background: #14203a; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .03em; }
+  .risk-CRITICAL { background: rgba(239,68,68,.18); color: #fca5a5; border: 1px solid rgba(239,68,68,.45); }
+  .risk-HIGH { background: rgba(249,115,22,.18); color: #fdba74; border: 1px solid rgba(249,115,22,.45); }
+  .risk-MEDIUM { background: rgba(245,158,11,.16); color: #fcd34d; border: 1px solid rgba(245,158,11,.4); }
+  .risk-LOW { background: rgba(16,185,129,.16); color: #6ee7b7; border: 1px solid rgba(16,185,129,.4); }
+  .risk-INFORMATIONAL { background: rgba(100,116,139,.2); color: #cbd5e1; border: 1px solid rgba(100,116,139,.45); }
+  .state-OPEN { color: #6ee7b7; font-weight: 600; }
+  .state-CLOSED { color: var(--muted); }
+  .state-FILTERED, .state-OPENFILTERED { color: #fcd34d; }
+
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .bar-row { display: grid; grid-template-columns: minmax(110px, 40%) 1fr 46px; gap: 10px; align-items: center; margin-bottom: 9px; font-size: 13px; }
+  .bar-label { color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { background: #0d1728; border-radius: 999px; height: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #22d3ee); }
+  .bar-value { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .cve { border: 1px solid var(--border); border-left-width: 4px; border-radius: 10px; padding: 13px 15px; margin-bottom: 12px; background: var(--panel-2); }
+  .cve.CRITICAL { border-left-color: var(--bad); }
+  .cve.HIGH { border-left-color: #f97316; }
+  .cve.MEDIUM { border-left-color: var(--warn); }
+  .cve.LOW, .cve.INFORMATIONAL { border-left-color: var(--info); }
+  .cve h4 { margin: 0 0 6px; font-size: 14px; }
+  .cve p { margin: 4px 0; font-size: 13px; color: #cbd5e1; }
+  .cve .meta { font-size: 12px; color: var(--muted); }
+
+  .exports { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+  .export-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; background: var(--panel-2); display: flex; flex-direction: column; gap: 8px; }
+  .export-card h4 { margin: 0; font-size: 14px; }
+  .export-card p { margin: 0; font-size: 12.5px; color: var(--muted); flex: 1; }
+  .export-card a { text-decoration: none; text-align: center; }
+
+  .msg { border-radius: 10px; padding: 12px 14px; font-size: 13.5px; margin-bottom: 14px; }
+  .msg.error { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.45); color: #fecaca; }
+  .msg.warn { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.4); color: #fde68a; }
+  .msg.ok { background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.4); color: #a7f3d0; }
+
+  footer { grid-column: 1 / -1; color: var(--muted); font-size: 12px; text-align: center; padding: 8px 0 24px; }
+  .empty { color: var(--muted); font-size: 13.5px; padding: 14px 2px; }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <header class="top">
+    <div>
+      <h1>🌐 LAN Scanner &amp; Active Port Scanner</h1>
+      <p>A guided network check for learning and authorized security reviews.</p>
+    </div>
+    <span class="badge" id="env-badge"><span class="dot"></span> checking environment…</span>
+  </header>
+
+  <div class="banner">
+    <strong>New here?</strong> Leave the target as your detected subnet, keep the defaults, and select
+    <strong>Launch Scan</strong>. An open port is not automatically a problem.
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer;color:var(--muted)">📘 Understand the results</summary>
+      <div id="guide" style="margin-top:8px"></div>
+    </details>
+  </div>
+
+  <aside>
+    <div class="card">
+      <h2>🛡️ Scan setup</h2>
+      <form id="scan-form">
+        <label class="field">
+          <span class="lbl">Device or network to check</span>
+          <input type="text" id="target" name="target" placeholder="192.168.1.0/24" autocomplete="off" />
+          <div class="hint">One device IP (<code>127.0.0.1</code>) or a range (<code>192.168.1.0/24</code>).</div>
+        </label>
+
+        <label class="field">
+          <span class="lbl">How should it check?</span>
+          <select id="scan_mode" name="scan_mode"></select>
+        </label>
+
+        <label class="field">
+          <span class="lbl">Port selection</span>
+          <select id="port_selection" name="port_selection"></select>
+        </label>
+
+        <label class="field hidden" id="custom-ports-field">
+          <span class="lbl">Custom ports</span>
+          <input type="text" id="custom_ports" name="custom_ports" value="21,22,80,443,8080" autocomplete="off" />
+          <div class="hint">Examples: <code>80,443</code> · <code>1-1024</code> · <code>80,8080-8090</code></div>
+        </label>
+
+        <h2 style="margin-top:18px">⚙️ Performance &amp; safety</h2>
+        <label class="field">
+          <span class="lbl">Concurrent worker threads — <span id="threads-out">50</span></span>
+          <input type="range" id="threads" name="threads" min="5" max="200" step="5" value="50" />
+        </label>
+        <label class="field">
+          <span class="lbl">Socket timeout — <span id="timeout-out">1.0</span>s</span>
+          <input type="range" id="timeout" name="timeout" min="0.2" max="3" step="0.1" value="1" />
+        </label>
+        <label class="field">
+          <span class="lbl">Rate limit — <span id="max_pps-out">off</span></span>
+          <input type="range" id="max_pps" name="max_pps" min="0" max="500" step="25" value="0" />
+          <div class="hint">0 = unthrottled pacing.</div>
+        </label>
+
+        <label class="check"><input type="checkbox" id="grab_banners" name="grab_banners" checked /> <span>Grab service banners &amp; CVE hints</span></label>
+        <label class="check"><input type="checkbox" id="allow_public" name="allow_public" /> <span>Allow public IP scanning (authorized testing only)</span></label>
+
+        <button type="submit" class="btn-primary" id="scan-btn">▶️ Launch Scan</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>⚖️ Authorization</h2>
+      <p style="font-size:12.5px;color:var(--muted);margin:0">
+        Only scan systems you own or have explicit written permission to test.
+        Public ranges are blocked unless you explicitly allow them.
+      </p>
+    </div>
+  </aside>
+
+  <main style="display:contents">
+    <section class="progress-wrap card hidden" id="progress-card">
+      <div class="progress-head">
+        <span id="progress-message"><span class="spin"></span> Starting…</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-actions">
+        <button type="button" class="btn-ghost btn-danger" id="cancel-btn">Stop scan</button>
+      </div>
+    </section>
+
+    <div id="messages"></div>
+
+    <section class="kpis hidden" id="kpis"></section>
+
+    <nav class="tabs hidden" id="tabs">
+      <button data-tab="table" class="active">📋 Discovered hosts &amp; ports</button>
+      <button data-tab="charts">📊 Visual analytics</button>
+      <button data-tab="cves">🚨 Vulnerability hints</button>
+      <button data-tab="export">💾 Export reports</button>
+    </nav>
+
+    <section class="tab-panel hidden" id="panel-table">
+      <div class="card">
+        <div class="table-tools">
+          <input type="text" id="row-filter" placeholder="Filter by IP, service, port, risk…" autocomplete="off" />
+          <span class="hint" id="row-count"></span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="ip">IP address</th>
+                <th data-sort="mac">MAC address</th>
+                <th data-sort="vendor">Vendor</th>
+                <th data-sort="port">Port</th>
+                <th data-sort="protocol">Protocol</th>
+                <th data-sort="state">State</th>
+                <th data-sort="service">Service</th>
+                <th data-sort="banner">Banner / version</th>
+                <th data-sort="risk">Risk level</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" id="panel-charts">
+      <div class="charts">
+        <div class="card">
+          <h2>Open ports by service</h2>
+          <div id="chart-services"></div>
+        </div>
+        <div class="card">
+          <h2>Security risk distribution</h2>
+          <div id="chart-risks"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" id="panel-cves">
+      <div class="card">
+        <h2>Vulnerability findings &amp; remediation hints</h2>
+        <p class="hint">Basic hints only, based on banner heuristics. Not a full vulnerability scanner.</p>
+        <div id="cve-list"></div>
+      </div>
+    </section>
+
+    <section class="tab-panel hidden" id="panel-export">
+      <div class="card">
+        <h2>Download your report</h2>
+        <p class="hint" style="margin-top:0">The <strong>Word report</strong> is best for non-technical readers: it explains what the results mean and suggests next steps.</p>
+        <div class="exports" id="export-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Runs on the Python standard library — no pandas or Streamlit required. ·
+    <span id="footer-target"></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const state = {
+    config: null,
+    jobId: null,
+    pollTimer: null,
+    rows: [],
+    sortKey: "ip",
+    sortDir: 1,
+    payload: null,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (value) => String(value === null || value === undefined ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  function show(el, on) { el.classList.toggle("hidden", !on); }
+
+  function message(text, kind) {
+    const box = document.createElement("div");
+    box.className = "msg " + (kind || "ok");
+    box.innerHTML = esc(text).replace(/\n/g, "<br>");
+    $("messages").appendChild(box);
+    return box;
+  }
+  function clearMessages() { $("messages").innerHTML = ""; }
+
+  /* ---------------------------- setup ---------------------------- */
+
+  async function loadConfig() {
+    try {
+      const res = await fetch("api/config");
+      const cfg = await res.json();
+      state.config = cfg;
+
+      const badge = $("env-badge");
+      badge.innerHTML = '<span class="dot"></span> ' + esc(cfg.local_ip) + " · " +
+        (cfg.is_admin ? "Administrator (raw L2/L3)" : "Standard user (TCP connect)");
+
+      $("target").value = cfg.subnet;
+
+      const modeSelect = $("scan_mode");
+      modeSelect.innerHTML = cfg.scan_modes
+        .map((m) => '<option value="' + esc(m) + '">' + esc(m) + "</option>").join("");
+
+      const portSelect = $("port_selection");
+      portSelect.innerHTML = cfg.port_selections
+        .map((p) => '<option value="' + esc(p) + '">' + esc(p) + "</option>").join("");
+
+      $("guide").innerHTML = cfg.plain_language_guide
+        .map((g) => "<div style='font-size:13px;margin:3px 0'><strong>" + esc(g.term) + ":</strong> " + esc(g.meaning) + "</div>")
+        .join("");
+
+      if (cfg.authorization_notice) {
+        const details = document.createElement("details");
+        details.className = "notice";
+        details.innerHTML = "<summary>⚖️ Ethical &amp; legal authorization notice (click to expand)</summary><pre>" +
+          esc(cfg.authorization_notice) + "</pre>";
+        $("messages").appendChild(details);
+      }
+    } catch (err) {
+      message("Could not read the local environment: " + err.message, "error");
+    }
+  }
+
+  function currentConfig() {
+    return {
+      target: $("target").value.trim(),
+      scan_mode: $("scan_mode").value,
+      port_selection: $("port_selection").value,
+      custom_ports: $("custom_ports").value,
+      threads: Number($("threads").value),
+      timeout: Number($("timeout").value),
+      max_pps: Number($("max_pps").value),
+      grab_banners: $("grab_banners").checked,
+      allow_public: $("allow_public").checked,
+    };
+  }
+
+  function syncPortField() {
+    show($("custom-ports-field"), $("port_selection").value === "Custom Range / List");
+  }
+
+  /* ---------------------------- scanning ---------------------------- */
+
+  async function startScan(event) {
+    event.preventDefault();
+    clearMessages();
+    resetResults();
+
+    const cfg = currentConfig();
+    if (!cfg.target) { message("Please enter a device or network to check.", "error"); return; }
+
+    $("scan-btn").disabled = true;
+    $("scan-btn").textContent = "Scanning…";
+    show($("progress-card"), true);
+
+    try {
+      const res = await fetch("api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cfg),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        message(data.error || "The scan could not be started.", "error");
+        finishScan();
+        return;
+      }
+      state.jobId = data.job_id;
+      pollJob();
+    } catch (err) {
+      message("Could not reach the dashboard server: " + err.message, "error");
+      finishScan();
+    }
+  }
+
+  async function pollJob() {
+    if (!state.jobId) return;
+    try {
+      const res = await fetch("api/job?id=" + encodeURIComponent(state.jobId));
+      const job = await res.json();
+      if (!res.ok) {
+        message(job.error || "Scan status unavailable.", "error");
+        finishScan();
+        return;
+      }
+      renderProgress(job);
+
+      if (job.status === "running") {
+        state.pollTimer = setTimeout(pollJob, 700);
+        return;
+      }
+      if (job.status === "error") {
+        message(job.error || "The scan failed.", "error");
+      } else if (job.status === "cancelled") {
+        message(
+          job.has_results
+            ? "Scan cancelled. Partial results are shown below."
+            : "Scan cancelled before any results were collected.",
+          "warn"
+        );
+      }
+      if (job.has_results) {
+        renderResults(job);
+      }
+      finishScan();
+    } catch (err) {
+      message("Lost contact with the dashboard server: " + err.message, "error");
+      finishScan();
+    }
+  }
+
+  function renderProgress(job) {
+    const pct = Math.round((job.progress || 0) * 100);
+    $("progress-fill").style.width = pct + "%";
+    $("progress-pct").textContent = pct + "%";
+    $("progress-message").textContent = job.message || "Working…";
+  }
+
+  function finishScan() {
+    $("scan-btn").disabled = false;
+    $("scan-btn").textContent = "▶️ Launch Scan";
+    if (state.pollTimer) { clearTimeout(state.pollTimer); state.pollTimer = null; }
+  }
+
+  async function cancelScan() {
+    try {
+      await fetch("api/cancel", { method: "POST" });
+      $("cancel-btn").textContent = "Stopping…";
+    } catch (err) { /* ignore */ }
+  }
+
+  /* ---------------------------- results ---------------------------- */
+
+  function resetResults() {
+    state.rows = [];
+    state.payload = null;
+    show($("kpis"), false);
+    show($("tabs"), false);
+    ["panel-table", "panel-charts", "panel-cves", "panel-export"].forEach((id) => show($(id), false));
+    $("rows").innerHTML = "";
+    $("cve-list").innerHTML = "";
+    $("export-grid").innerHTML = "";
+    $("chart-services").innerHTML = "";
+    $("chart-risks").innerHTML = "";
+    $("footer-target").textContent = "";
+    $("cancel-btn").textContent = "Stop scan";
+  }
+
+  function kpi(label, value, sub) {
+    return '<div class="kpi"><div class="k">' + esc(label) + '</div><div class="v">' + esc(value) +
+      '</div><div class="s">' + esc(sub || "") + "</div></div>";
+  }
+
+  function renderResults(job) {
+    state.payload = job;
+    const summary = job.summary || { hosts: 0, open_ports: 0, alerts: 0, critical: 0 };
+    const cfg = job.config || {};
+
+    $("kpis").innerHTML =
+      kpi("Hosts discovered", summary.hosts, "") +
+      kpi("Open ports", summary.open_ports, "") +
+      kpi("Security alerts", summary.alerts, summary.critical ? summary.critical + " critical" : "none critical") +
+      kpi("Scan time", (job.elapsed || 0).toFixed(2) + "s", "") +
+      kpi("Target scope", cfg.target || "local", "");
+
+    show($("kpis"), true);
+    show($("tabs"), true);
+    $("footer-target").textContent = "Last target: " + (cfg.target || "unknown") +
+      " · " + new Date().toLocaleString();
+
+    state.rows = job.rows || [];
+    state.sortKey = "ip";
+    state.sortDir = 1;
+    renderTable();
+
+    renderBarChart($("chart-services"), job.services || {}, "No open ports found to chart.");
+    renderBarChart($("chart-risks"), job.risks || {}, "No results to chart.");
+    renderCves(job.cves || []);
+    renderExports(job);
+
+    activateTab("table");
+
+    (job.warnings || []).forEach((w) => message(w, "warn"));
+    if (job.status === "done") message("Scan completed in " + (job.elapsed || 0).toFixed(2) + "s.", "ok");
+  }
+
+  function renderBarChart(container, data, emptyText) {
+    const entries = Object.entries(data)
+      .filter(([, v]) => Number(v) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]));
+    if (!entries.length) {
+      container.innerHTML = '<p class="empty">' + esc(emptyText) + "</p>";
+      return;
+    }
+    const max = Math.max.apply(null, entries.map((e) => Number(e[1])));
+    container.innerHTML = entries.map(function (entry) {
+      const label = entry[0];
+      const value = Number(entry[1]);
+      const width = max ? Math.round((value / max) * 100) : 0;
+      return '<div class="bar-row"><div class="bar-label" title="' + esc(label) + '">' + esc(label) +
+        '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div>' +
+        '<div class="bar-value">' + esc(value) + "</div></div>";
+    }).join("");
+  }
+
+  function sortRows(rows) {
+    const key = state.sortKey;
+    const dir = state.sortDir;
+    return rows.slice().sort(function (a, b) {
+      let va = a[key];
+      let vb = b[key];
+      const na = Number(va);
+      const nb = Number(vb);
+      if (!isNaN(na) && !isNaN(nb) && va !== "-" && vb !== "-") return (na - nb) * dir;
+      va = String(va).toLowerCase();
+      vb = String(vb).toLowerCase();
+      if (va === vb) return 0;
+      return va < vb ? -dir : dir;
+    });
+  }
+
+  function renderTable() {
+    const filter = $("row-filter").value.trim().toLowerCase();
+    let rows = state.rows;
+    if (filter) {
+      rows = rows.filter((row) =>
+        Object.values(row).some((value) => String(value).toLowerCase().includes(filter))
+      );
+    }
+    rows = sortRows(rows);
+
+    $("row-count").textContent = rows.length + " of " + state.rows.length + " rows";
+    if (!rows.length) {
+      $("rows").innerHTML = '<tr><td colspan="9" class="empty">No rows match this filter.</td></tr>';
+      return;
+    }
+    $("rows").innerHTML = rows.map(function (row) {
+      const risk = String(row.risk || "INFORMATIONAL");
+      const stateClass = "state-" + String(row.state || "").replace(/[^A-Z]/gi, "");
+      return "<tr>" +
+        "<td><strong>" + esc(row.ip) + "</strong></td>" +
+        "<td>" + esc(row.mac) + "</td>" +
+        "<td>" + esc(row.vendor) + "</td>" +
+        "<td>" + esc(row.port) + "</td>" +
+        "<td>" + esc(row.protocol) + "</td>" +
+        '<td class="' + stateClass + '">' + esc(row.state) + "</td>" +
+        "<td>" + esc(row.service) + "</td>" +
+        "<td>" + esc(row.banner) + "</td>" +
+        '<td><span class="pill risk-' + esc(risk) + '">' + esc(risk) + "</span></td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function renderCves(cves) {
+    if (!cves.length) {
+      $("cve-list").innerHTML = '<div class="msg ok">✅ No known high-impact CVEs matched the captured service banners.</div>';
+      return;
+    }
+    $("cve-list").innerHTML = cves.map(function (cve) {
+      const severity = String(cve.severity || "MEDIUM").toUpperCase();
+      return '<div class="cve ' + esc(severity) + '">' +
+        "<h4>" + esc(cve.cve_id || "Unknown ID") + " — " + esc(severity) +
+        (cve.cvss !== undefined ? " (CVSS " + esc(cve.cvss) + ")" : "") + "</h4>" +
+        '<div class="meta">Found on ' + esc(cve.ip || "") + ":" + esc(cve.port || "") + "</div>" +
+        "<p><strong>What it is:</strong> " + esc(cve.description || cve.title || "No description provided.") + "</p>" +
+        "<p><strong>Suggested fix:</strong> " + esc(cve.fix || "Update the service to a supported version.") + "</p>" +
+        "</div>";
+    }).join("");
+  }
+
+  function renderExports(job) {
+    const id = encodeURIComponent(job.job_id || state.jobId || "");
+    const formats = [
+      ["docx", "📄 Word report", "Best for non-technical readers: explains the results and next steps."],
+      ["json", "🧾 JSON", "Structured data for other tools and scripts."],
+      ["csv", "📊 CSV", "Open in Excel or any spreadsheet app."],
+      ["xml", "🧭 XML (Nmap style)", "Compatible with Nmap-aware tooling."],
+      ["html", "🌐 HTML report", "Self-contained interactive report you can share."],
+    ];
+    $("export-grid").innerHTML = formats.map(function (f) {
+      return '<div class="export-card"><h4>' + esc(f[1]) + "</h4><p>" + esc(f[2]) + "</p>" +
+        '<a class="btn-ghost" data-fmt="' + f[0] + '" href="api/export?fmt=' + f[0] + "&id=" + id +
+        '">Download</a></div>';
+    }).join("");
+  }
+
+  /* Downloads are fetched so a server-side problem (e.g. optional dependency
+     missing) is shown as a readable message instead of raw JSON in the tab. */
+  async function handleExportClick(event) {
+    const link = event.target.closest("a[data-fmt]");
+    if (!link) return;
+    event.preventDefault();
+
+    const fmt = link.dataset.fmt;
+    const original = link.textContent;
+    link.textContent = "Preparing…";
+    try {
+      const res = await fetch(link.getAttribute("href"));
+      if (!res.ok) {
+        let detail = "Export failed (HTTP " + res.status + ").";
+        try {
+          const body = await res.json();
+          if (body && body.error) detail = body.error;
+        } catch (err) { /* not JSON */ }
+        message(detail, "error");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match = /filename="([^"]+)"/.exec(disposition);
+      const filename = match ? match[1] : "lan_scan_report." + fmt;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (err) {
+      message("Download failed: " + err.message, "error");
+    } finally {
+      link.textContent = original;
+    }
+  }
+
+  function activateTab(name) {
+    document.querySelectorAll("#tabs button").forEach(function (b) {
+      b.classList.toggle("active", b.dataset.tab === name);
+    });
+    show($("panel-table"), name === "table");
+    show($("panel-charts"), name === "charts");
+    show($("panel-cves"), name === "cves");
+    show($("panel-export"), name === "export");
+  }
+
+  /* ---------------------------- wiring ---------------------------- */
+
+  document.addEventListener("DOMContentLoaded", function () {
+    loadConfig();
+    syncPortField();
+
+    $("scan-form").addEventListener("submit", startScan);
+    $("port_selection").addEventListener("change", syncPortField);
+    $("cancel-btn").addEventListener("click", cancelScan);
+    $("row-filter").addEventListener("input", renderTable);
+    $("export-grid").addEventListener("click", handleExportClick);
+
+    $("threads").addEventListener("input", (e) => { $("threads-out").textContent = e.target.value; });
+    $("timeout").addEventListener("input", (e) => { $("timeout-out").textContent = Number(e.target.value).toFixed(1); });
+    $("max_pps").addEventListener("input", (e) => {
+      $("max_pps-out").textContent = Number(e.target.value) === 0 ? "off" : e.target.value + " pps";
+    });
+
+    $("tabs").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-tab]");
+      if (btn) activateTab(btn.dataset.tab);
+    });
+
+    document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+      th.addEventListener("click", function () {
+        const key = th.dataset.sort;
+        if (state.sortKey === key) { state.sortDir *= -1; } else { state.sortKey = key; state.sortDir = 1; }
+        renderTable();
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------------
+# Core requirements (terminal scanner, exporters, tests)
+# These are pure-Python packages: no compiled extensions to be blocked by
+# Windows Application Control policies.
+# ---------------------------------------------------------------------------
+scapy>=2.5.0
+rich>=13.0.0
+python-docx>=1.0.0
+
+# ---------------------------------------------------------------------------
+# Optional: the Streamlit web dashboard (dashboard/app.py)
+#
+# NOTE: Streamlit imports pandas/pyarrow at start-up. If a Windows Application
+# Control policy blocks a pandas compiled DLL (e.g. "vectorized.cp312-win_amd64.pyd"),
+# streaming the dashboard is impossible - use the dependency-free dashboard:
+#
+#     python run_dashboard.py --backend standalone
+#
+# The standalone dashboard needs ONLY the Python standard library, so it works
+# even when Streamlit/pandas cannot be imported at all.
+# ---------------------------------------------------------------------------
+streamlit>=1.30.0
+
+# ---------------------------------------------------------------------------
+# Development / testing
+# ---------------------------------------------------------------------------
+pytest>=7.0.0
+pytest-cov>=4.0.0

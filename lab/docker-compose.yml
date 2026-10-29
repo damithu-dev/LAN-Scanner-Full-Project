@@ -1,0 +1,78 @@
+version: '3.8'
+
+# ==============================================================================
+# Isolated Multi-Service Practice Lab for LAN Scanner & Active Port Scanner
+#
+# Provides 4 distinct network services running on an isolated private bridge
+# network (172.28.0.0/16) for safe, ethical penetration testing and port auditing.
+#
+# Usage:
+#   Start lab:  docker compose -f lab/docker-compose.yml up -d
+#   Stop lab:   docker compose -f lab/docker-compose.yml down
+# ==============================================================================
+
+networks:
+  scanner_lab_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+
+services:
+  # Target 1: Nginx Web Server (HTTP on port 80, mapped to host 8080)
+  nginx_target:
+    image: nginx:alpine
+    container_name: lab_nginx_target
+    networks:
+      scanner_lab_net:
+        ipv4_address: 172.28.0.10
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  # Target 2: Redis In-Memory Cache (Port 6379, mapped to host 6379)
+  redis_target:
+    image: redis:alpine
+    container_name: lab_redis_target
+    networks:
+      scanner_lab_net:
+        ipv4_address: 172.28.0.20
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--protected-mode", "no"]
+    restart: unless-stopped
+
+  # Target 3: PostgreSQL Relational Database (Port 5432, mapped to host 5432)
+  postgres_target:
+    image: postgres:alpine
+    container_name: lab_postgres_target
+    networks:
+      scanner_lab_net:
+        ipv4_address: 172.28.0.30
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: lab_audit_db
+      POSTGRES_USER: auditor
+      POSTGRES_PASSWORD: LabAuditPassword123!
+    restart: unless-stopped
+
+  # Target 4: vsftpd Lightweight FTP Server (Port 21, mapped to host 2121)
+  ftp_target:
+    image: fauria/vsftpd
+    container_name: lab_ftp_target
+    networks:
+      scanner_lab_net:
+        ipv4_address: 172.28.0.40
+    ports:
+      - "2121:21"
+      - "20:20"
+      - "21100-21110:21100-21110"
+    environment:
+      FTP_USER: labuser
+      FTP_PASS: labpass123
+      PASV_MIN_PORT: 21100
+      PASV_MAX_PORT: 21110
+    restart: unless-stopped
